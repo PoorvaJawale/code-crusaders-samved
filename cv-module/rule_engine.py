@@ -34,6 +34,13 @@ class RuleEngine:
         self.parking_violation_time_s = 30 # Time in seconds before it's a violation
         self.stationary_history = {} # {track_id: {"start_time": t, "last_pos": (x,y)}}
 
+        # --- Congestion Config ---
+        self.congestion_threshold = 20  # Number of vehicles to consider as congested
+        self.congestion_roi = None  # ROI polygon for density counting
+        self.congestion_duration_threshold = 10  # seconds
+        self.congestion_start_time = None
+        self.last_congestion_alert = 0
+
     # ----------------------
     # Utils
     # ----------------------
@@ -197,6 +204,66 @@ class RuleEngine:
         return parking_violations
 
     # ----------------------
+    # Congestion Detection
+    # ----------------------
+    def check_congestion(self, tracked_objects, threshold=None):
+        """
+        Detect traffic congestion based on vehicle count.
+        
+        Args:
+            tracked_objects: List of tracked vehicles
+            threshold: Override default congestion threshold
+            
+        Returns:
+            dict or None: Congestion alert if threshold exceeded
+        """
+        if threshold is None:
+            threshold = self.congestion_threshold
+        
+        current_time = time.time()
+        
+        # Count vehicles in ROI (or all vehicles if no ROI defined)
+        if self.congestion_roi:
+            vehicles_in_roi = []
+            roi_array = np.array(self.congestion_roi, np.int32)
+            
+            for obj in tracked_objects:
+                centroid = obj.get("centroid")
+                if centroid:
+                    point = (float(centroid[0]), float(centroid[1]))
+                    if cv2.pointPolygonTest(roi_array, point, False) >= 0:
+                        vehicles_in_roi.append(obj)
+            
+            vehicle_count = len(vehicles_in_roi)
+        else:
+            vehicle_count = len(tracked_objects)
+        
+        # Check if congestion threshold is exceeded
+        if vehicle_count >= threshold:
+            if self.congestion_start_time is None:
+                self.congestion_start_time = current_time
+            
+            duration = current_time - self.congestion_start_time
+            
+            # Only alert if congestion persists for minimum duration
+            if duration >= self.congestion_duration_threshold:
+                # Cooldown to prevent spam alerts
+                if current_time - self.last_congestion_alert > 30:
+                    self.last_congestion_alert = current_time
+                    return {
+                        "type": "high_congestion",
+                        "vehicle_count": vehicle_count,
+                        "threshold": threshold,
+                        "duration": duration,
+                        "level": "critical" if vehicle_count > threshold * 1.5 else "high"
+                    }
+        else:
+            # Reset congestion timer if below threshold
+            self.congestion_start_time = None
+        
+        return None
+
+    # ----------------------
     # Main check()
     # ----------------------
     def check(self, frame, tracked_objects):
@@ -222,6 +289,11 @@ class RuleEngine:
                     "type": "overspeed",
                     "reason": f"Speed {speed:.1f} > {self.speed_limit}",
                     "track_id": tid, "cls": cls_name, "conf": conf,
+        # Add Congestion Check
+        congestion_alert = self.check_congestion(tracked_objects)
+        if congestion_alert:
+            violations.append(congestion_alert)
+
                     "speed_kmph": float(speed), "bbox": bbox, "tl_state": tl_state
                 })
 
