@@ -328,7 +328,12 @@ class TrafficDetector:
             tid = t['track_id']
     
     # Check if this specific track_id is in the violations list
-            is_violation = any(v["track_id"] == tid for v in violations)
+            is_violation = any(
+            v.get("track_id") == tid
+            for v in violations
+            if isinstance(v, dict) and v.get("track_id") == tid
+            )
+
     
     # Switch color: Red (0,0,255) for violation, Green (0,255,0) for okay
             color = (0, 0, 255) if is_violation else (0, 255, 0)
@@ -344,9 +349,24 @@ class TrafficDetector:
             cv2.putText(annotated, label, (x1, max(20, y1-10)),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2)
 
-        for v in violations:
-            x1,y1,x2,y2 = v['bbox']
-            cv2.putText(annotated, v['type'].upper(), (x1, max(20,y1-35)),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0,0,255), 2)
+            for v in violations:
+                # Skip global / non-object rules (like congestion)
+                if not isinstance(v, dict):
+                    continue
+                if "bbox" not in v or "track_id" not in v:
+                    continue
 
-        return annotated, dets, tracked_list, violations, tl_state
+                x1, y1, x2, y2 = v["bbox"]
+                tid = v["track_id"]
+
+                cv2.putText(
+                    annotated,
+                    v["type"].upper(),
+                    (x1, max(20, y1 - 35)),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.7,
+                    (0, 0, 255),
+                    2
+                )
+        # ✅ ALWAYS return outputs (VERY IMPORTANT)
+        return annotated, dets, tracked_list, violations

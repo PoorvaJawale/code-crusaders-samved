@@ -1,11 +1,26 @@
+# --- Congestion imports (ADD ONLY) ---
+from congestion_analyse.congestion_state import CongestionDetector
+from congestion_analyse.density import compute_density
+from congestion_analyse.speed import compute_average_speed
+
+
 # rule_engine.py (FINAL MERGED FIXED)
 import time
 import cv2
 import numpy as np
 
 
+
+
 class RuleEngine:
     def __init__(self, db_conn=None):
+
+        #----traffic congestion detector----
+                # --- Congestion Detection (ADD ONLY) ---
+        self.congestion_detector = CongestionDetector()
+        self.congestion_roi = (0, 0, 1280, 720)  # default full frame
+        self.video_fps = 30
+
         # --- Config defaults ---
         self.speed_limit = 50.0
         self.allowed_direction = (0, 1)   # default downward direction
@@ -195,6 +210,34 @@ class RuleEngine:
                 del self.stationary_history[tid]
                 
         return parking_violations
+    
+
+        # ----------------------
+    # Traffic Congestion (ADD ONLY)
+    # ----------------------
+    def check_congestion(self, tracked_objects, track_history=None):
+        """
+        Computes traffic congestion state.
+        Does NOT create violations.
+        """
+
+        if track_history is None:
+            track_history = {}
+
+        density, vehicle_count = compute_density(tracked_objects, self.congestion_roi)
+        avg_speed = compute_average_speed(track_history, self.video_fps)
+
+        self.congestion_detector.update(density, avg_speed)
+        state = self.congestion_detector.get_state()
+
+        return {
+            "type": "traffic_congestion",
+            "state": state,
+            "vehicle_count": vehicle_count,
+            "density": round(density, 6),
+            "avg_speed": round(avg_speed, 2)
+        }
+
 
     # ----------------------
     # Main check()
@@ -281,5 +324,14 @@ class RuleEngine:
         # Add Illegal Parking Check
         parking_vios = self.check_illegal_parking(tracked_objects)
         violations.extend(parking_vios)
+
+
+                # --- Congestion Status (ADD ONLY) ---
+        try:
+            congestion_status = self.check_congestion(tracked_objects)
+            violations.append(congestion_status)
+        except Exception:
+            pass
+
 
         return violations  

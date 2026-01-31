@@ -53,6 +53,19 @@ def main(video_path=0):
 
         annotated, dets, tracked, violations = td.detect_frame(frame)
 
+                # ----------------------
+        # Congestion status (ADD ONLY)
+        # ----------------------
+        try:
+            congestion = td.rule_engine.check_congestion(
+                tracked_objects=tracked,
+                track_history=getattr(td, "track_history", {})
+            )
+            print("[CONGESTION]", congestion["state"])
+        except Exception as e:
+            pass
+
+
         # pick last_violation from rule_engine if set
         lv = getattr(td.rule_engine, "last_violation", None)
         if lv:

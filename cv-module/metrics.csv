@@ -1,0 +1,2 @@
+class,precision,recall,f1_score,gt,det,tp
+car,0.0,0.0,0.0,0,20,0
