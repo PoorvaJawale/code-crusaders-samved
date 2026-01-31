@@ -27,9 +27,9 @@ def compute_average_speed(track_history, fps):
     avg_speed = total_speed / count if count > 0 else 0
 
     # speed classification (conceptual m/s thresholds)
-    if avg_speed < 10:
+    if avg_speed < 50:
         speed_level = "LOW"
-    elif avg_speed < 20:
+    elif avg_speed < 200:
         speed_level = "MEDIUM"
     else:
         speed_level = "HIGH"

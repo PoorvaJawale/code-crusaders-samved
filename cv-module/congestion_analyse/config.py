@@ -6,7 +6,7 @@ VEHICLE_WEIGHTS = {
 }
 
 SPEED_THRESHOLDS = {
-  "low": 10,
+  "low": 5,
   "medium": 20
 }
 

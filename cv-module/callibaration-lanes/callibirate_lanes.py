@@ -1,123 +1,133 @@
 """
-calibrate_lanes.py
-------------------
-Lane calibration using an empty road image.
+calibrate_lanes_from_video.py
+-----------------------------
+Lane calibration using the FIRST FRAME of the video.
 
 Usage:
-python calibrate_lanes.py --image empty_road.jpg --out lane_polygons.json
+python calibrate_lanes_from_video.py --video traffic.mp4 --out lane_polygons.json
 
 Instructions:
-- Click 4 points for Lane 1 (clockwise or anticlockwise)
-- Press 'n' to move to Lane 2
-- Click 4 points for Lane 2
-- Press 's' to save and exit
+- Click 4 points for UPPER lane (far lane)
+- Press 'n' to switch to LOWER lane (near lane)
+- Click 4 points for LOWER lane
+- Press 's' to save
+- Press 'r' to reset
+- Press 'q' to quit without saving
 """
 
 import cv2
 import json
 import argparse
-
 import numpy as np
 
-# ------------------------
+# -------------------------------------------------
 # CLI ARGUMENTS
-# ------------------------
-parser = argparse.ArgumentParser("Lane Calibration Tool")
-parser.add_argument("--image", required=True, help="Path to empty road image")
+# -------------------------------------------------
+parser = argparse.ArgumentParser("Lane Calibration from Video")
+parser.add_argument("--video", required=True, help="Path to traffic video")
 parser.add_argument("--out", default="lane_polygons.json", help="Output JSON file")
 args = parser.parse_args()
 
-# ------------------------
-# LOAD IMAGE
-# ------------------------
-img = cv2.imread(args.image)
-if img is None:
-    raise FileNotFoundError("Could not load image")
+# -------------------------------------------------
+# LOAD FIRST FRAME
+# -------------------------------------------------
+cap = cv2.VideoCapture(args.video)
+ret, frame = cap.read()
+cap.release()
 
-clone = img.copy()
-current_lane = 1
-points = {1: [], 2: []}
+if not ret:
+    raise RuntimeError("Could not read first frame from video")
 
-print("\n[INFO] Lane Calibration Started")
-print("[INFO] Click 4 points for Lane 1")
-print("[INFO] Press 'n' to switch lane")
-print("[INFO] Press 's' to save & exit\n")
+original = frame.copy()
+h, w = frame.shape[:2]
 
-# ------------------------
+# -------------------------------------------------
+# STATE
+# -------------------------------------------------
+current_lane = "upper"   # upper -> lower
+points = {"upper": [], "lower": []}
+
+print("\n[INFO] Lane Calibration Started (from video frame)")
+print("[INFO] Click 4 points for UPPER lane (far lane)")
+print("[INFO] Press 'n' to switch to LOWER lane")
+print("[INFO] Press 's' to save")
+print("[INFO] Press 'r' to reset")
+print("[INFO] Press 'q' to quit\n")
+
+# -------------------------------------------------
+# HELPERS
+# -------------------------------------------------
+def order_polygon(pts):
+    """Ensure consistent clockwise polygon order"""
+    pts = np.array(pts)
+    center = np.mean(pts, axis=0)
+    angles = np.arctan2(pts[:, 1] - center[1], pts[:, 0] - center[0])
+    return pts[np.argsort(angles)].astype(int).tolist()
+
+# -------------------------------------------------
 # MOUSE CALLBACK
-# ------------------------
+# -------------------------------------------------
 def mouse_callback(event, x, y, flags, param):
-    global current_lane, img
-
+    global current_lane
     if event == cv2.EVENT_LBUTTONDOWN:
         if len(points[current_lane]) < 4:
             points[current_lane].append((x, y))
-            cv2.circle(img, (x, y), 5, (0, 255, 255), -1)
-            cv2.putText(
-                img,
-                f"{current_lane}-{len(points[current_lane])}",
-                (x + 5, y - 5),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 255),
-                1
-            )
 
-# ------------------------
+# -------------------------------------------------
 # WINDOW SETUP
-# ------------------------
+# -------------------------------------------------
 cv2.namedWindow("Lane Calibration")
 cv2.setMouseCallback("Lane Calibration", mouse_callback)
 
-# ------------------------
+# -------------------------------------------------
 # MAIN LOOP
-# ------------------------
+# -------------------------------------------------
 while True:
-    display = img.copy()
+    display = original.copy()
 
-    # Draw Lane 1
-    if len(points[1]) > 1:
-        cv2.polylines(display, [cv2.convexHull(
-            cv2.UMat(np.array(points[1], dtype=int))
-        )], False, (0, 255, 255), 2)
+    # Draw polygons
+    for lane_name, color in [("upper", (0, 255, 255)), ("lower", (255, 255, 0))]:
+        if len(points[lane_name]) > 1:
+            cv2.polylines(
+                display,
+                [np.array(points[lane_name], dtype=int)],
+                False,
+                color,
+                2
+            )
+        for (x, y) in points[lane_name]:
+            cv2.circle(display, (x, y), 5, (0, 0, 255), -1)
 
-    # Draw Lane 2
-    if len(points[2]) > 1:
-        cv2.polylines(display, [cv2.convexHull(
-            cv2.UMat(np.array(points[2], dtype=int))
-        )], False, (255, 255, 0), 2)
-
+    # UI text
     cv2.putText(
         display,
-        f"Current Lane: {current_lane}",
-        (20, 30),
+        f"Current Lane: {current_lane.upper()}",
+        (20, 40),
         cv2.FONT_HERSHEY_SIMPLEX,
-        0.9,
-        (0, 255, 255),
+        1.0,
+        (0, 255, 0),
         2
     )
 
     cv2.imshow("Lane Calibration", display)
     key = cv2.waitKey(1) & 0xFF
 
-    if key == ord('n'):
-        if current_lane == 1:
-            if len(points[1]) != 4:
-                print("[WARN] Lane 1 needs exactly 4 points")
-            else:
-                current_lane = 2
-                print("[INFO] Switched to Lane 2")
+    if key == ord('n') and current_lane == "upper":
+        if len(points["upper"]) == 4:
+            current_lane = "lower"
+            print("[INFO] Switched to LOWER lane")
+        else:
+            print("[WARN] Upper lane needs exactly 4 points")
 
     elif key == ord('s'):
-        if len(points[1]) == 4 and len(points[2]) == 4:
+        if len(points["upper"]) == 4 and len(points["lower"]) == 4:
             break
         else:
             print("[WARN] Both lanes must have exactly 4 points")
 
     elif key == ord('r'):
-        img = clone.copy()
-        points = {1: [], 2: []}
-        current_lane = 1
+        points = {"upper": [], "lower": []}
+        current_lane = "upper"
         print("[INFO] Reset calibration")
 
     elif key == ord('q'):
@@ -125,17 +135,18 @@ while True:
         cv2.destroyAllWindows()
         exit()
 
-# ------------------------
-# SAVE POLYGONS
-# ------------------------
+# -------------------------------------------------
+# ORDER & SAVE POLYGONS
+# -------------------------------------------------
 lane_data = {
-    "lane_1": points[1],
-    "lane_2": points[2]
+    "lane_1": order_polygon(points["upper"]),
+    "lane_2": order_polygon(points["lower"]),
+    "frame_width": w,
+    "frame_height": h
 }
 
 with open(args.out, "w") as f:
     json.dump(lane_data, f, indent=2)
 
-print(f"\n[OK] Lane polygons saved to {args.out}")
-
 cv2.destroyAllWindows()
+print(f"\n[OK] Lane polygons saved to {args.out}")
