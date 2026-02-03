@@ -283,19 +283,23 @@ class RuleEngine:
             speed = obj.get("velocity_kmph") or obj.get("speed_kmph") or 0.0
             conf = round(float(obj.get("conf", 0.0)), 2)
 
-            # overspeed
-            if speed and speed > self.speed_limit and self._cooldown_ok(tid, "overspeed"):
-                violations.append({
-                    "type": "overspeed",
-                    "reason": f"Speed {speed:.1f} > {self.speed_limit}",
-                    "track_id": tid, "cls": cls_name, "conf": conf,
+           # overspeed
+        if speed and speed > self.speed_limit and self._cooldown_ok(tid, "overspeed"):
+            violations.append({
+                "type": "overspeed",
+                "reason": f"Speed {speed:.1f} > {self.speed_limit}",
+                "track_id": tid,
+                "cls": cls_name,
+                "conf": conf,
+                "speed_kmph": float(speed),
+                "bbox": bbox,
+                "tl_state": tl_state
+            })
         # Add Congestion Check
         congestion_alert = self.check_congestion(tracked_objects)
         if congestion_alert:
             violations.append(congestion_alert)
 
-                    "speed_kmph": float(speed), "bbox": bbox, "tl_state": tl_state
-                })
 
             # signal jump
             if self.stop_line_y and tl_state == "RED":
