@@ -1,78 +1,88 @@
-# 🚦 AI Traffic Violation Detection System
+# Code Crusaders: Smart Traffic & Parking Management System (SMC)
 
-A computer vision–powered traffic monitoring system that detects and logs traffic violations in real-time using **YOLO**, **DeepSORT**, and a **Streamlit dashboard**.  
+## Project Overview
+Developed for the **Solapur Municipal Corporation (SMC)**, this project is an integrated mobility management platform designed to reduce congestion and improve road safety. By leveraging real-time computer vision and predictive analytics, the system identifies traffic violations, detects illegal parking in restricted zones, and forecasts congestion trends.
 
-This project was built during a hackathon to showcase the potential of AI in **smart city solutions**.
-
----
-
-## ✨ Features
-- 🔍 **Object Detection**: Detects vehicles, pedestrians, and traffic lights using YOLOv8.  
-- 🛑 **Violation Rules**:  
-  - Red light violation  
-  - Wrong lane detection  
-  - Overspeeding (optional with calibration)  
-- 📍 **Auto Camera Calibration** for speed & distance estimation.  
-- 🎥 **Multi-object Tracking** with DeepSORT.  
-- 💾 **Database Integration** with MongoDB (violations logged with timestamp, vehicle type, snapshot).  
-- 📊 **Streamlit Dashboard** for live monitoring & violation reports.  
+### Key Features
+- **Comprehensive Traffic Violation Detection**: Automated identification of multiple infractions, including red-light jumps, wrong-lane entry, overspeeding, and riding without a helmet.
+- **Illegal Parking Monitoring**: Real-time detection of stationary vehicles within defined "No Parking Zones" using polygon-zone mapping and DeepSORT tracking to trigger alerts after set durations.
+- **Parking Congestion Analytics**: Dynamic monitoring of road occupancy to detect high-density areas and provide real-time congestion status.
+- **Smart Parking Module Management**: A unified system for geo-mapping authorized vs. unauthorized zones, providing municipal officials with digital visibility into city-wide parking health.
+- **Predictive Congestion Forecasting**: Utilizing historical data to predict peak-hour surges near critical junctions, markets, and stations for better urban planning.
 
 ---
 
-## 🖥️ Project Flow
-1. 🎦 Upload or stream live video feed.  
-2. 🧠 YOLO detects vehicles, people, and traffic lights.  
-3. 📌 DeepSORT assigns unique IDs and tracks movement.  
-4. ⚖️ Rule Engine checks for violations (red light, lane, speed).  
-5. 📷 Snapshot + violation details stored in MongoDB.  
-6. 📊 Dashboard displays real-time analytics.  
+## System Architecture
+The platform follows a modular architecture:
+1. **Ingestion:** Live CCTV streams or video file input.
+2. **AI Processing Core (cv-module):** Object detection (YOLOv8) and multi-object tracking (DeepSORT).
+3. **Rule Engine:** Evaluates object coordinates against predefined ROI polygons for violations.
+4. **Data Layer:** Persistent storage in MongoDB for traffic history and logs.
+5. **Frontend:** React-based dashboard for real-time visualization.
 
 ---
 
-## 🚀 Tech Stack
-- **Frontend**: Streamlit  
-- **Backend**: Python (FastAPI optional)  
-- **ML Model**: YOLOv8 (Ultralytics)  
-- **Tracking**: DeepSORT  
-- **Database**: MongoDB  
-- **Others**: OpenCV, Numpy, Pandas  
+## Getting Started
 
----
+### Prerequisites
+- **Python 3.8+**
+- **Node.js & npm**
+- **MongoDB** (Local or Atlas instance)
 
-## 📂 Project Structure
-```bash
-├── cv-module/
-│   ├── detector.py             # YOLO + DeepSORT detection
-│   ├── rule_engine.py          # Rules for traffic violations
-│   ├── db.py                   # MongoDB helper functions
-│   ├── dashboard_streamlit.py  # Streamlit dashboard
-│   ├── utils.py                # Helper utilities
-│   └── tools/
-│       └── auto_calibrate.py   # Auto camera calibration
-├── models/                     # Pretrained YOLO weights
-├── requirements.txt            # Dependencies
-└── README.md                   # Project documentation
-```   
-## 🚀 Installation
-```bash
-# Clone the repo
-git clone https://github.com/nikitajitendrasolanki/31_Codexcrew.git
-cd 31_Codexcrew/cv-module
+### Installation
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate   # (Linux/Mac)
-venv\Scripts\activate      # (Windows)
+1. **Clone the repository:**
+   ```bash
+   git clone [https://github.com/PoorvaJawale/code-crusaders-samved.git](https://github.com/PoorvaJawale/code-crusaders-samved.git)
+   cd code-crusaders-samved
 
-# Install dependencies
-pip install -r requirements.txt
-``` 
-## ▶️ Usage
-```bash
-# Run Streamlit dashboard
-streamlit run dashboard_streamlit.py
-``` 
-## 📜 License
-MIT License – Free to use and modify.
+2. Setup AI Backend (cv-module):
+   ```bash
+   cd cv-module
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
 
+3. Setup Web Frontend:
+   ```bash
+   # From the project root
+   npm install
 
+Running the Project
+1. Start the AI Dashboard:
+   ```bash
+   cd cv-module
+   streamlit run dashboard_streamlit.py
+
+2. Start the React Frontend:
+   ```bash
+   # From the project root
+   npm run dev
+
+3. Run the Parking & Congestion AI (Backend)
+   ```bash
+   cd cv-module/callibaration-lanes
+   python callibirate_lanes.py --video ..\..\videos\traffic_jam.mp4 --out lane_polygons.json
+   cd ..
+   python runner_tc.py --video ../videos/traffic_jam.mp4 --lanes_json callibaration-lanes/lane_polygons.json --model models/yolov8m.pt
+
+4. Run the Parking Module Management
+   ```bash
+   cd cv-module
+   streamlit run dashboard_streamlit.py
+
+## Tech Stack
+- AI/ML: Python, Ultralytics (YOLOv8), DeepSORT, Scikit-learn, OpenCV.
+- Frontend: React, Vite, Tailwind CSS, Streamlit.
+- Backend/Database: FastAPI/Flask, MongoDB.
+- DevOps: Git, GitHub.
+
+## Team: Code Crusaders
+- Poorva Jawale
+- Kartik Halkunde
+- Aditya Narkar
+- Yulissaa Pathare
+- Rajvi Joshi
+
+## License
+This project is developed for the SAMVED-HACK-26 hackathon. All rights reserved.
